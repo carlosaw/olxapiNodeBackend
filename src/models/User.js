@@ -10,10 +10,10 @@ const modelSchema = new mongoose.Schema({
 });
 
 const modelName = 'User';
-
+// Se já existir o model pega ele
 if(mongoose.connection && mongoose.connection.models[modelName]) {
     module.exports = mongoose.connection.models[modelName];
-} else {
+} else {// Senão cria e pega
     module.exports = mongoose.model(modelName, modelSchema);
 }
 

@@ -71,7 +71,7 @@ module.exports = {
             });
             return;
         }
-
+        // Criação do usuário
         const passwordHash = await bcrypt.hash(data.password, 10);
 
         const payload = (Date.now() + Math.random()).toString();

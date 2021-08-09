@@ -16,6 +16,6 @@ if(mongoose.connection && mongoose.connection.models[modelName]) {
 /*
 categories
 - _id
-- nome
+- name
 - slug
 */
