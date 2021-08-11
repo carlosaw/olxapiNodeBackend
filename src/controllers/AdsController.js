@@ -164,6 +164,27 @@ module.exports = {
     let userInfo = await User.findById(ad.idUser).exec();
     let stateInfo = await StateModel.findById(ad.state).exec();
 
+    let others = [];
+    if(other) {//Pega os anuncios do mesmo usuario menos o anuncio ativo
+      const otherData = await Ad.find({status: true,idUser: ad.idUser}).exec();
+      for(let i in otherData) {
+        if(otherData[i]._id.toString() != ad._id.toString()) {
+          
+          let image = `${process.env.BASE}/media/default.jpg`;
+          let defaultImg = otherData[i].images.find(e => e.default);
+          if(defaultImg) {
+            image = `${process.env.BASE}/media/${defaultImg.url}`;
+          }
+
+          others.push({
+            id: otherData[i]._id,
+            title: otherData[i].price,
+            priceNegotiable: otherData[i].priceNegotiable,
+            image
+          });
+        }
+      }
+    }
     res.json({
       id: ad._id,
       title: ad.title,
@@ -178,11 +199,65 @@ module.exports = {
         name: userInfo.name,
         email: userInfo.email
       },
-      stateName: stateInfo.name
+      stateName: stateInfo.name,
+      others
     });
   },
 
   editAction: async (req, res) => {
+    let { id } = req.params;
+    let { title, status, price, priceneg, desc, cat, images, token } = req.body;
 
+    if(id.length < 12) {
+      res.json({error: 'ID inválido!'});
+      return;
+    }
+    const ad = await Ad.findById(id).exec();
+    if(!ad) {
+      res.json({error: 'Anúncio enexistente!'});
+      return;
+    }
+    // Verifica se anuncio é do usuario logado
+    const user = await User.findOne({token}).exec();
+    if(user._id.toString() !== ad.idUser) {
+      res.json({error: 'Este anúncio não é seu!'});
+      return;
+    }
+    // Atualização do produto
+    let updates = {};
+    if(title) {
+      updates.title = title;
+    }
+    if(price) {
+      price = price.replace('.', '').replace(',', '.').replace('R$ ', '');
+      price = parseFloat(price);
+      updates.price = price;
+    }
+    if(priceneg) {
+      updates.priceNegotiable = priceneg;
+    }
+    if(status) {
+      updates.status = status;
+    }
+    if(desc) {
+      updates.description = desc;
+    }
+    if(cat) {
+      const category = await Category.findOne({slug: cat}).exec();
+      if(!category) {
+        res.json({error: 'Categoria inexistente!'});
+        return;
+      }
+      updates.category = category._id.toString();
+    }
+
+    if(images) {
+      updates.images = images;
+    }
+    await Ad.findByIdAndUpdate(id, {$set: updates});
+
+    // TODO: Novas Imagens.
+    
+    res.json({error: ''});
   }
 };
