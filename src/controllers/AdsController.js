@@ -4,7 +4,7 @@ const jimp = require('jimp');
 const Category = require('../models/Category');
 const User = require('../models/User');
 const Ad = require('../models/Ad');
-const StateModel= require('../models/State');
+const StateModel = require('../models/State');
 
 // Prepara a imagem e salva
 const addImage = async (buffer) => {
@@ -32,13 +32,23 @@ module.exports = {
 
   addAction: async (req, res) => {
     let { title, price, priceneg, desc, cat, token } = req.body;
-    const user = await User.findOne({token}).exec();
+    const user = await User.findOne({ token }).exec();
 
-    if(!title || !cat) {
-      res.json({error: 'Título e/ou categoria não foram preenchidos'});
+    if (!title || !cat) {
+      res.json({ error: 'Título e/ou categoria não foram preenchidos' });
       return;
     }
-    if(price) { // R$ 8.000,35 no banco tem que ser 8000.35
+    if(cat.length < 12) {
+      res.json({error: 'Id de Categoria inválido!'});
+      return;
+    }
+    const category = await Category.findById(cat);//Pega categoria pelo ID
+    if(!category) {
+      res.json({error: 'Categoria inexistente!'});
+      return
+    }
+
+    if (price) { // R$ 8.000,35 no banco tem que ser 8000.35
       price = price.replace('.', '').replace(',', '.').replace('R$', '');
       price = parseFloat(price);
     } else {
@@ -53,13 +63,13 @@ module.exports = {
     newAd.title = title;
     newAd.category = cat;
     newAd.price = price;
-    newAd.priceNegotiable = (priceneg=='true') ? true : false;
+    newAd.priceNegotiable = (priceneg == 'true') ? true : false;
     newAd.description = desc;
     newAd.views = 0;
 
-    if(req.files && req.files.img) {// Se mandou imagem
-      if(req.files.img.length == undefined) {// 
-        if(['image/jpeg', 'image/jpg', 'image.png'].includes(req.files.img.mimetype)) {
+    if (req.files && req.files.img) {// Se mandou imagem
+      if (req.files.img.length == undefined) {// 
+        if (['image/jpeg', 'image/jpg', 'image.png'].includes(req.files.img.mimetype)) {
           let url = await addImage(req.files.img.data);
           newAd.images.push({
             url,
@@ -67,8 +77,8 @@ module.exports = {
           });
         }
       } else {// Loop das imagens
-        for(let i=0; i < req.files.img.length; i++ ) {
-          if(['image/jpeg', 'image/jpg', 'image.png'].includes(req.files.img[i].mimetype)) {
+        for (let i = 0; i < req.files.img.length; i++) {
+          if (['image/jpeg', 'image/jpg', 'image.png'].includes(req.files.img[i].mimetype)) {
             let url = await addImage(req.files.img[i].data);
             newAd.images.push({
               url,
@@ -78,31 +88,31 @@ module.exports = {
         }
       }
     }
-    if(newAd.images.length > 0) {
+    if (newAd.images.length > 0) {
       newAd.images[0].default = true;
     }
 
     const info = await newAd.save();
-    res.json({id: info._id});
+    res.json({ id: info._id });
   },
 
   getList: async (req, res) => {
     let { sort = 'asc', offset = 0, limit = 8, q, cat, state } = req.query;
-    let filters = {status: true};
+    let filters = { status: true };
     let total = 0;
 
-    if(q) {// Para pegar min ou maisc
-      filters.title = {'$regex': q, '$options': 'i'};
+    if (q) {// Para pegar min ou maisc
+      filters.title = { '$regex': q, '$options': 'i' };
     }
-    if(cat) {
-      const c = await Category.findOne({slug: cat}).exec();
-      if(c) {
+    if (cat) {
+      const c = await Category.findOne({ slug: cat }).exec();
+      if (c) {
         filters.category = c._id.toString();
       }
     }
-    if(state) {
-      const s = await StateModel.findOne({name: state.toUpperCase()}).exec();
-      if(s) {
+    if (state) {
+      const s = await StateModel.findOne({ name: state.toUpperCase() }).exec();
+      if (s) {
         filters.state = s._id.toString();
       }
     }
@@ -111,16 +121,16 @@ module.exports = {
     total = adsTotal.length;
 
     const adsData = await Ad.find(filters)
-      .sort({dateCreated: (sort == 'desc' ? -1 : 1)})
+      .sort({ dateCreated: (sort == 'desc' ? -1 : 1) })
       .skip(parseInt(offset))
       .limit(parseInt(limit))
       .exec();
 
     let ads = [];
-    for(let i in adsData) {
+    for (let i in adsData) {
       let image;
       let defaultImg = adsData[i].images.find(e => e.default);
-      if(defaultImg) {
+      if (defaultImg) {
         image = `${process.env.BASE}/media/${defaultImg.url}`;
       } else {
         image = `${process.env.BASE}/media/default.jpg`;
@@ -134,29 +144,29 @@ module.exports = {
         image
       });
     }
-    res.json({ads, total});
+    res.json({ ads, total });
   },
 
   getItem: async (req, res) => {
     let { id, other = null } = req.query;
-    if(!id) {
-      res.json({error: 'Sem produto'});
+    if (!id) {
+      res.json({ error: 'Sem produto' });
       return;
     }
-    if(id.length < 12) {
-      res.json({error: 'ID Inválido!'});
+    if (id.length < 12) {
+      res.json({ error: 'ID Inválido!' });
       return;
     }
     const ad = await Ad.findById(id);
-    if(!ad) {
-      res.json({error: 'Produto inexistente'});
+    if (!ad) {
+      res.json({ error: 'Produto inexistente' });
       return;
     }
     ad.views++;
     await ad.save();
 
     let images = [];
-    for(let i in ad.images) {
+    for (let i in ad.images) {
       images.push(`${process.env.BASE}/media/${ad.images[i].url}`);
     }
 
@@ -165,17 +175,16 @@ module.exports = {
     let stateInfo = await StateModel.findById(ad.state).exec();
 
     let others = [];
-    if(other) {//Pega os anuncios do mesmo usuario menos o anuncio ativo
-      const otherData = await Ad.find({status: true,idUser: ad.idUser}).exec();
-      for(let i in otherData) {
-        if(otherData[i]._id.toString() != ad._id.toString()) {
-          
+    if (other) {//Pega os anuncios do mesmo usuario menos o anuncio ativo
+      const otherData = await Ad.find({ status: true, idUser: ad.idUser }).exec();
+      for (let i in otherData) {
+        if (otherData[i]._id.toString() != ad._id.toString()) {
+
           let image = `${process.env.BASE}/media/default.jpg`;
           let defaultImg = otherData[i].images.find(e => e.default);
-          if(defaultImg) {
+          if (defaultImg) {
             image = `${process.env.BASE}/media/${defaultImg.url}`;
           }
-
           others.push({
             id: otherData[i]._id,
             title: otherData[i].price,
@@ -208,56 +217,83 @@ module.exports = {
     let { id } = req.params;
     let { title, status, price, priceneg, desc, cat, images, token } = req.body;
 
-    if(id.length < 12) {
-      res.json({error: 'ID inválido!'});
+    if (id.length < 12) {
+      res.json({ error: 'ID inválido!' });
       return;
     }
     const ad = await Ad.findById(id).exec();
-    if(!ad) {
-      res.json({error: 'Anúncio enexistente!'});
+    if (!ad) {
+      res.json({ error: 'Anúncio enexistente!' });
       return;
     }
     // Verifica se anuncio é do usuario logado
-    const user = await User.findOne({token}).exec();
-    if(user._id.toString() !== ad.idUser) {
-      res.json({error: 'Este anúncio não é seu!'});
+    const user = await User.findOne({ token }).exec();
+    if (user._id.toString() !== ad.idUser) {
+      res.json({ error: 'Este anúncio não é seu!' });
       return;
     }
     // Atualização do produto
     let updates = {};
-    if(title) {
+    if (title) {
       updates.title = title;
     }
-    if(price) {
+    if (price) {
       price = price.replace('.', '').replace(',', '.').replace('R$ ', '');
       price = parseFloat(price);
       updates.price = price;
     }
-    if(priceneg) {
+    if (priceneg) {
       updates.priceNegotiable = priceneg;
     }
-    if(status) {
+    if (status) {
       updates.status = status;
     }
-    if(desc) {
+    if (desc) {
       updates.description = desc;
     }
-    if(cat) {
-      const category = await Category.findOne({slug: cat}).exec();
-      if(!category) {
-        res.json({error: 'Categoria inexistente!'});
+    if (cat) {
+      const category = await Category.findOne({ slug: cat }).exec();
+      if (!category) {
+        res.json({ error: 'Categoria inexistente!' });
         return;
       }
       updates.category = category._id.toString();
     }
 
-    if(images) {
+    if (images) {
+
       updates.images = images;
     }
-    await Ad.findByIdAndUpdate(id, {$set: updates});
+    await Ad.findByIdAndUpdate(id, { $set: updates });
 
     // TODO: Novas Imagens.
-    
-    res.json({error: ''});
+    if (req.files && req.files.img) {
+      const adI = await Ad.findById(id);// Armazena imagem em adI
+      // Verifica se tem imagem padrão
+      if (req.files.img.length == undefined) {
+        if (['image/jpeg', 'image/jpg', 'image/png'].includes(req.files.img.mimetype)) {
+          let url = await addImage(req.files.img.data);
+          adI.images.push({
+            url,
+            default: false
+          });
+        }
+      } else {// Senão pega imagem enviada
+        for (let i = 0; i < req.files.img.length; i++) {
+          if (['image/jpeg', 'image/jpg', 'image/png'].includes(req.files.img[i].mimetype)) {
+            let url = await addImage(req.files.img[i].data);
+            adI.images.push({
+              url,
+              default: false
+            });
+          }
+        }
+      }
+      // Salva imagem enviada ou padrão
+      adI.images = [...adI.images];
+      await adI.save();
+    }
+
+    res.json({ error: '' });
   }
 };
