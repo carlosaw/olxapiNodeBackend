@@ -45,7 +45,7 @@ module.exports = {
     const category = await Category.findById(cat);//Pega categoria pelo ID
     if(!category) {
       res.json({error: 'Categoria inexistente!'});
-      return
+      return;
     }
 
     if (price) { // R$ 8.000,35 no banco tem que ser 8000.35

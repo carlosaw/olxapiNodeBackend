@@ -26,6 +26,9 @@ server.use(fileupload());
 server.use(express.static(__dirname+'/public'));
 
 server.use('/', apiRoutes);
+server.get('/ping', (req, res)=>{
+    res.json({pong: true});
+});
 
 server.listen(process.env.PORT, ()=>{
     console.log(` - Rodando no endereço: ${process.env.BASE}`);
